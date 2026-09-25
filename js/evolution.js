@@ -2,7 +2,7 @@
 // Runner population using a simple genetic algorithm (no gradients needed,
 // which keeps everything easy to run and serialize entirely client-side).
 
-import { Brain, GENOME_LEN, mutate, crossover } from './brain.js';
+import { Brain, GENOME_LEN, INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE, mutate, crossover } from './brain.js';
 import { Match } from './sim.js';
 
 export const POP_SIZE = 24;
@@ -53,6 +53,7 @@ export class Coevolution {
     this.generation = 0;
     this.history = []; // {gen, bestTagger, bestRunner, tagRate}
     this._lastFeatured = null; // last Match played by the current-best pair, for rendering
+    this.arenaLayout = null;
   }
 
   // Runs ONE full generation synchronously (all matches). Call this from a
@@ -67,7 +68,7 @@ export class Coevolution {
         const j = Math.floor(Math.random() * nR);
         const tBrain = new Brain(this.taggers.genomes[i]);
         const rBrain = new Brain(this.runners.genomes[j]);
-        const m = new Match(tBrain, rBrain);
+        const m = new Match(tBrain, rBrain, this.arenaLayout);
         const res = m.runToCompletion();
         this.taggers.fitness[i] += res.taggerFitness / OPPONENTS_PER_GENOME;
         this.runners.fitness[j] += res.runnerFitness / (OPPONENTS_PER_GENOME * (nT / nR));
@@ -110,15 +111,33 @@ export class Coevolution {
     return buf;
   }
   loadBuffer(buf) {
+    if (buf.byteLength < 5 * 4) throw new Error('Not a valid tag-rl save file');
     const header = new Uint32Array(buf, 0, 5);
     if (header[0] !== 0x31474154) throw new Error('Not a valid tag-rl save file');
     const [, generation, nT, nR, glen] = header;
-    if (glen !== GENOME_LEN) throw new Error('Save file is from an incompatible network shape');
+    const legacyInputSize = 41;
+    const legacyGenomeLen = (legacyInputSize + 1) * HIDDEN_SIZE + (HIDDEN_SIZE + 1) * OUTPUT_SIZE;
+    if (glen !== GENOME_LEN && glen !== legacyGenomeLen) throw new Error('Save file is from an incompatible network shape');
+    if (buf.byteLength !== 5 * 4 + (nT + nR) * glen * 4) throw new Error('Not a valid tag-rl save file');
+    const migrateGenome = genome => {
+      const migrated = new Float32Array(GENOME_LEN);
+      const legacyW1Len = (legacyInputSize + 1) * HIDDEN_SIZE;
+      const currentW1Len = (INPUT_SIZE + 1) * HIDDEN_SIZE;
+      for (let h = 0; h < HIDDEN_SIZE; h++) {
+        migrated.set(genome.subarray(h * (legacyInputSize + 1), (h + 1) * (legacyInputSize + 1)), h * (INPUT_SIZE + 1));
+      }
+      migrated.set(genome.subarray(legacyW1Len), currentW1Len);
+      return migrated;
+    };
+    const readGenome = offset => {
+      const genome = new Float32Array(buf, offset, glen).slice();
+      return glen === GENOME_LEN ? genome : migrateGenome(genome);
+    };
     let offset = 5 * 4;
     const taggers = [];
-    for (let i = 0; i < nT; i++) { taggers.push(new Float32Array(buf, offset, glen).slice()); offset += glen * 4; }
+    for (let i = 0; i < nT; i++) { taggers.push(readGenome(offset)); offset += glen * 4; }
     const runners = [];
-    for (let i = 0; i < nR; i++) { runners.push(new Float32Array(buf, offset, glen).slice()); offset += glen * 4; }
+    for (let i = 0; i < nR; i++) { runners.push(readGenome(offset)); offset += glen * 4; }
     this.generation = generation;
     this.taggers.genomes = taggers;
     this.runners.genomes = runners;

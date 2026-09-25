@@ -2,7 +2,7 @@
 // Pure math, no DOM/Three.js dependency, so it can run headless (fast, for
 // training many matches per frame) and inside the renderer.
 
-export const INPUT_SIZE = 41;   // see sim.js buildObservation() for layout
+export const INPUT_SIZE = 57;   // see sim.js buildObservation() for layout
 export const HIDDEN_SIZE = 32;
 export const OUTPUT_SIZE = 4;   // moveX, moveZ, jump, interact
 

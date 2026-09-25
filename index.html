@@ -43,6 +43,29 @@
   .hint{color:var(--muted);font-size:11px;margin-top:6px;}
   #status{font-size:11px;color:var(--muted);min-height:16px;margin-top:6px;}
   #status.ok{color:#3ddc84} #status.err{color:var(--accent)}
+  .editor-modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;}
+  button.active{border-color:#3ddc84;color:#3ddc84;}
+  .wall-dimensions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+  .wall-dimensions label{color:var(--muted);font-size:11px;}
+  .wall-dimensions input{display:block;width:100%;margin-top:4px;background:#0a0c11;color:var(--text);
+    border:1px solid var(--border);border-radius:6px;padding:6px;font:inherit;}
+  #wall-kind{width:100%;background:#0a0c11;color:var(--text);border:1px solid var(--border);
+    border-radius:6px;padding:7px;font:inherit;}
+  #wall-list{display:grid;gap:5px;max-height:140px;overflow-y:auto;margin-top:9px;}
+  .wall-item{text-align:left;font-size:11px;padding:6px 8px;}
+  #editor-status{font-size:11px;color:var(--muted);min-height:16px;margin-top:7px;}
+  #server-status{font-size:11px;color:var(--muted);margin:7px 0;}
+  #view-mode{width:100%;background:#0a0c11;color:var(--text);border:1px solid var(--border);
+    border-radius:6px;padding:8px;font:inherit;}
+  .feedback-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  #feedback-status{font-size:11px;color:var(--muted);min-height:16px;margin-top:7px;}
+  .server-auth input{display:block;width:100%;margin-top:4px;background:#0a0c11;color:var(--text);
+    border:1px solid var(--border);border-radius:6px;padding:7px;font:inherit;}
+  @media(max-width:760px){
+    #app{flex-direction:column;}
+    #viewport{min-height:48vh;}
+    #panel{width:100%;max-height:52vh;border-left:0;border-top:1px solid var(--border);}
+  }
 </style>
 </head>
 <body>
@@ -62,15 +85,77 @@
       <div class="stat"><div class="label">Tag rate</div><div class="value" id="stat-tagrate">–</div></div>
     </div>
     <div class="row">
-      <div class="stat"><div class="label tagger">Best tagger</div><div class="value" id="stat-tagger">–</div></div>
-      <div class="stat"><div class="label runner">Best runner</div><div class="value" id="stat-runner">–</div></div>
+      <div class="stat"><div class="label tagger">Best tagger fitness</div><div class="value" id="stat-tagger">–</div></div>
+      <div class="stat"><div class="label runner">Best runner fitness</div><div class="value" id="stat-runner">–</div></div>
+    </div>
+    <div class="hint">Fitness points for the top individual in the latest finished generation, not brain variables. Taggers score for closing in and tagging quickly; runners score for keeping distance and surviving. Compare each role over time, not against the other role.</div>
+
+    <div class="section">
+      <h2>Manual feedback</h2>
+      <div class="feedback-grid">
+        <button id="reward-tagger" type="button">Reward tagger +10</button>
+        <button id="punish-tagger" type="button">Punish tagger −10</button>
+        <button id="reward-runner" type="button">Reward runner +10</button>
+        <button id="punish-runner" type="button">Punish runner −10</button>
+      </div>
+      <div class="hint">Adjusts that role's current champion score before selection; it does not add player actions to training.</div>
+      <div id="feedback-status" role="status"></div>
     </div>
 
-    <button id="btn-toggle" class="primary" style="width:100%">Start training</button>
+    <div class="section">
+      <label class="field" for="view-mode">Camera view</label>
+      <select id="view-mode">
+        <option value="arena">Arena</option>
+        <option value="tagger">Tagger first person</option>
+        <option value="runner">Runner first person</option>
+        <option value="player">Player first person</option>
+      </select>
+      <button id="btn-player" type="button" style="width:100%;margin-top:8px">Add player cube</button>
+      <div id="player-controls" class="hint" hidden>Move: W A S D · Jump: Space · Pan view: arrow keys. Player matches never contribute to AI training.</div>
+    </div>
 
-    <label class="field">Training speed (generations per batch: <span id="speed-val">1</span>)</label>
-    <input type="range" id="speed" min="1" max="15" value="1" step="1">
-    <div class="hint">Higher = faster evolution, but the page may feel less smooth while a batch runs.</div>
+    <div id="client-training">
+      <button id="btn-toggle" class="primary" style="width:100%">Start training</button>
+      <label class="field">Training speed (generations per batch: <span id="speed-val">1</span>)</label>
+      <input type="range" id="speed" min="1" max="15" value="1" step="1">
+      <div class="hint">Higher = faster evolution, but the page may feel less smooth while a batch runs.</div>
+    </div>
+
+    <div class="section">
+      <button id="btn-editor" type="button" style="width:100%">Edit arena</button>
+      <div id="editor-controls" hidden>
+        <div class="editor-modes">
+          <button id="editor-place" type="button" class="active" aria-pressed="true">Place wall</button>
+          <button id="editor-erase" type="button" aria-pressed="false">Erase wall</button>
+        </div>
+        <label class="field" for="wall-kind">Obstacle type</label>
+        <select id="wall-kind">
+          <option value="wall">Wall</option>
+          <option value="crawlspace">Crawlspace roof</option>
+        </select>
+        <div class="wall-dimensions">
+          <label>Width<input id="wall-width" type="number" min="0.5" max="12" step="0.5" value="4"></label>
+          <label><span id="wall-height-label">Height</span><input id="wall-height" type="number" min="0.5" max="8" step="0.5" value="1"></label>
+          <label>Depth<input id="wall-depth" type="number" min="0.5" max="12" step="0.5" value="1"></label>
+        </div>
+        <div class="row" style="margin:10px 0 0">
+          <button id="editor-clear" type="button" style="flex:1">Clear walls</button>
+        </div>
+        <div id="wall-list" aria-label="Fixed walls"></div>
+        <div id="editor-status" role="status"></div>
+      </div>
+    </div>
+
+    <div id="server-training" class="section" hidden>
+      <h1>Server training</h1>
+      <div id="server-status" role="status">Checking for a training server…</div>
+      <label class="field server-auth">Server access token<input id="server-token" type="password" autocomplete="off"></label>
+      <div class="row">
+        <button id="btn-server-toggle" type="button" style="flex:1" disabled>Pause server</button>
+        <button id="btn-server-import" type="button" style="flex:1" disabled>Import server brains</button>
+      </div>
+      <button id="btn-server-push" type="button" style="width:100%" disabled>Send brains and arena to server</button>
+    </div>
 
     <div class="section">
       <div class="row">
