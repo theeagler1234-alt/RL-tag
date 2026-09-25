@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tag RL — cubes that learn to chase and flee</title>
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#151822; --panel2:#1c2030; --text:#e7e9ee;
+    --muted:#8b91a5; --accent:#ff5d5d; --accent2:#4da3ff; --border:#2a2f42;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  #app{display:flex;height:100%;width:100%;}
+  #viewport{flex:1;position:relative;min-width:0;}
+  #viewport canvas{display:block;width:100%;height:100%;}
+  #hud{position:absolute;top:12px;left:12px;background:rgba(13,15,20,.7);
+    border:1px solid var(--border);border-radius:8px;padding:8px 12px;
+    font-size:12px;color:var(--muted);pointer-events:none;}
+  #hud b{color:var(--text)}
+  #panel{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);
+    padding:16px;overflow-y:auto;}
+  #panel h1{font-size:16px;margin:0 0 4px;}
+  #panel p.sub{color:var(--muted);margin:0 0 16px;font-size:12px;}
+  .row{display:flex;gap:8px;margin-bottom:10px;}
+  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+    padding:8px 10px;flex:1;}
+  .stat .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  .stat .value{font-size:18px;font-weight:600;margin-top:2px}
+  .tagger{color:var(--accent)} .runner{color:var(--accent2)}
+  button{background:var(--panel2);color:var(--text);border:1px solid var(--border);
+    border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;}
+  button:hover{border-color:#4b5270}
+  button.primary{background:var(--accent2);border-color:var(--accent2);color:#06101f;font-weight:600}
+  button.primary.paused{background:#3ddc84;border-color:#3ddc84}
+  label.field{display:block;margin:14px 0 6px;color:var(--muted);font-size:12px;}
+  input[type=range]{width:100%;}
+  textarea{width:100%;height:70px;background:#0a0c11;color:var(--text);
+    border:1px solid var(--border);border-radius:8px;padding:8px;font-size:11px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;resize:vertical;}
+  .section{border-top:1px solid var(--border);margin-top:16px;padding-top:14px;}
+  .hint{color:var(--muted);font-size:11px;margin-top:6px;}
+  #status{font-size:11px;color:var(--muted);min-height:16px;margin-top:6px;}
+  #status.ok{color:#3ddc84} #status.err{color:var(--accent)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="viewport">
+    <div id="hud">
+      <div><b class="tagger">■</b> tagger &nbsp; <b class="runner">■</b> runner</div>
+      <div>drag to orbit · scroll to zoom</div>
+    </div>
+  </div>
+  <div id="panel">
+    <h1>Tag RL</h1>
+    <p class="sub">Two cube agents co-evolve: one learns to chase, one learns to flee. Runs entirely in your browser.</p>
+
+    <div class="row">
+      <div class="stat"><div class="label">Generation</div><div class="value" id="stat-gen">0</div></div>
+      <div class="stat"><div class="label">Tag rate</div><div class="value" id="stat-tagrate">–</div></div>
+    </div>
+    <div class="row">
+      <div class="stat"><div class="label tagger">Best tagger</div><div class="value" id="stat-tagger">–</div></div>
+      <div class="stat"><div class="label runner">Best runner</div><div class="value" id="stat-runner">–</div></div>
+    </div>
+
+    <button id="btn-toggle" class="primary" style="width:100%">Start training</button>
+
+    <label class="field">Training speed (generations per batch: <span id="speed-val">1</span>)</label>
+    <input type="range" id="speed" min="1" max="15" value="1" step="1">
+    <div class="hint">Higher = faster evolution, but the page may feel less smooth while a batch runs.</div>
+
+    <div class="section">
+      <div class="row">
+        <button id="btn-export" style="flex:1">Export brains (base64)</button>
+        <button id="btn-download" style="flex:1">Download .txt</button>
+      </div>
+      <textarea id="export-area" readonly placeholder="Click 'Export brains' to generate a base64 save you can paste elsewhere..."></textarea>
+    </div>
+
+    <div class="section">
+      <label class="field">Import a save (paste base64, then click Import)</label>
+      <textarea id="import-area" placeholder="Paste a previously exported base64 string here..."></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="btn-import" style="flex:1">Import</button>
+        <button id="btn-reset" style="flex:1">Reset (new brains)</button>
+      </div>
+      <div id="status"></div>
+    </div>
+
+    <div class="hint section">
+      Progress auto-saves to this browser's local storage every generation.
+      Use export/import to move progress between devices or survive a cookie/storage clear.
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
