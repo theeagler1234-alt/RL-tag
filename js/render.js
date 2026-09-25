@@ -2,8 +2,8 @@
 // exactly one "featured" Match (from sim.js) per frame; all the other
 // matches played during training are headless and never touch this file.
 
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ARENA_HALF, RAY_COUNT } from './sim.js';
 
 export class SceneRenderer {
